@@ -3,6 +3,7 @@ import { MultiGraph } from "graphology";
 export type ChainNodeAttributes = {
     resolved: boolean;
     aliases?: string[];
+    createdTime?: number; // Unix timestamp in milliseconds
 }
 
 export type ChainEdgeAttributes = {

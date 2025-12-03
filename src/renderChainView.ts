@@ -1,5 +1,5 @@
 import { App, Component, MarkdownView, TFile } from "obsidian";
-import { getPrevNotes, getNextNotes } from "./graph/ChainDetector";
+import { buildRenderingChain, ChainSegment } from "./graph/BranchDetector";
 import { EmbeddableMarkdownEditor } from "./views/embeddededitor";
 import type ChainPlugin from "./main";
 
@@ -111,9 +111,8 @@ export const renderChainView = async (plugin: ChainPlugin, view?: MarkdownView) 
     const existing = cmSizer.querySelectorAll(".chain-thread-container");
     existing.forEach(el => el.remove());
 
-    // DATA FETCHING: Get the list of previous and next notes from our graph
-    const prevNotes = getPrevNotes(plugin.graph, currentFile.path);
-    const nextNotes = getNextNotes(plugin.graph, currentFile.path);
+    // BUILD THE RENDERING CHAIN using branching logic
+    const chainSegments = buildRenderingChain(plugin.graph, currentFile.path);
 
     // INJECTION LOGIC:
     // The .cm-sizer has 3 default children:
@@ -121,55 +120,51 @@ export const renderChainView = async (plugin: ChainPlugin, view?: MarkdownView) 
     // [1] .cm-layer (selection/cursor layer)
     // [2] .cm-contentContainer (the actual document content)
 
-    // We want to insert PREVIOUS notes BEFORE the content (index 2).
-    // We want to insert NEXT notes AFTER the content.
+    const contentContainerIndex = 2; // .cm-contentContainer is at index 2
+    let insertionIndex = contentContainerIndex;
 
-    // --- INJECT PREVIOUS NOTES ---
-    for (let i = 0; i < prevNotes.length; i++) {
-        const path = prevNotes[i];
-        const { content, yaml } = await extractNoteContent(plugin.app, path);
+    for (let i = 0; i < chainSegments.length; i++) {
+        const segment = chainSegments[i];
+
+        // Skip the active note itself (it's already rendered)
+        if (segment.path === currentFile.path) {
+            insertionIndex++; // Move past the content container
+            continue;
+        }
+
+        const { content, yaml } = await extractNoteContent(plugin.app, segment.path);
 
         // Create a container for this note
         const container = document.createElement("div");
-        container.className = "chain-thread-container chain-prev";
+
+        // Determine if this should be rendered BEFORE or AFTER active note
+        const isPrevNote = i < chainSegments.findIndex(s => s.path === currentFile.path);
+
+        // Apply CSS classes
+        const baseClass = isPrevNote ? "chain-prev" : "chain-next";
+        const replyClass = segment.isReply ? "chain-reply" : "";
+        container.className = `chain-thread-container ${baseClass} ${replyClass}`.trim();
 
         // Create the editor inside it
-        await createEmbeddedEditor(plugin.app, plugin, container, content, path);
+        await createEmbeddedEditor(plugin.app, plugin, container, content, segment.path);
 
-        // Insert at index 2 + i
-        // i=0 -> insert at 2 (pushes content to 3)
-        // i=1 -> insert at 3 (pushes content to 4)
-        const targetIndex = 2 + i;
-        if (cmSizer.children.length > targetIndex) {
-            cmSizer.insertBefore(container, cmSizer.children[targetIndex]);
+        // Insert the container
+        if (isPrevNote) {
+            // Insert BEFORE the content container
+            if (cmSizer.children.length > insertionIndex) {
+                cmSizer.insertBefore(container, cmSizer.children[insertionIndex]);
+            } else {
+                cmSizer.appendChild(container);
+            }
+            insertionIndex++; // Adjust for next insertion
         } else {
-            cmSizer.appendChild(container);
+            // Insert AFTER the content container
+            if (cmSizer.children.length > insertionIndex) {
+                cmSizer.insertBefore(container, cmSizer.children[insertionIndex]);
+            } else {
+                cmSizer.appendChild(container);
+            }
+            insertionIndex++; // Adjust for next insertion
         }
-    }
-
-    // --- INJECT NEXT NOTES ---
-    // Calculate where the content is now.
-    // Original index 2 + number of previous notes inserted.
-    const baseIndex = 2 + prevNotes.length;
-
-    // Start inserting next notes AFTER the content
-    let currentIndex = baseIndex + 1;
-
-    for (let i = 0; i < nextNotes.length; i++) {
-        const path = nextNotes[i];
-        const { content, yaml } = await extractNoteContent(plugin.app, path);
-
-        const container = document.createElement("div");
-        container.className = "chain-thread-container chain-next";
-
-        await createEmbeddedEditor(plugin.app, plugin, container, content, path);
-
-        // Insert at the calculated index
-        if (cmSizer.children.length > currentIndex) {
-            cmSizer.insertBefore(container, cmSizer.children[currentIndex]);
-        } else {
-            cmSizer.appendChild(container);
-        }
-        currentIndex++;
     }
 };

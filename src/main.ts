@@ -1,6 +1,6 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
-import { ChainGraph } from './graph/ChainGraph';
-import { buildChainGraph, updateNodeEdges } from './graph/ChainBuilder';
+import { ChainGraph } from './graph/GraphBuilder';
+import { buildChainGraph, updateNodeEdges } from './graph/ChainQueries';
 import { renderChainView } from './renderChainView';
 import { updateFrontmatter } from './utility/utils';
 

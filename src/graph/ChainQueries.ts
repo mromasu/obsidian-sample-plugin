@@ -1,6 +1,8 @@
-import { ChainGraph, ChainEdge, ChainEdgeAttributes, ChainNodeAttributes } from "../graph/ChainGraph";
+import { App, TFile } from "obsidian";
+import { ChainGraph, ChainEdge, ChainEdgeAttributes, ChainNodeAttributes } from "./GraphBuilder";
+
 /**
- * Helper to map edges from graphology format to BCEdge-like objects.
+ * Helper to map edges from graphology format to ChainEdge-like objects.
  * Graphology uses a callback-based iteration, so we wrap it to return a clean array of objects.
  * 
  * @param graph - The graphology instance
@@ -33,6 +35,7 @@ const mapEdges = (
         })
     );
 };
+
 /**
  * Chain Detection: Check if current note is part of a chain
  */
@@ -43,6 +46,7 @@ export const isInChain = (graph: ChainGraph, notePath: string): boolean => {
     const prevEdges = mapEdges(graph, notePath, "out");
     return prevEdges.length > 0;
 };
+
 /**
  * Get the previous note(s) in the chain.
  * Logic: If Current Note has "prev: [[Note A]]", then Note A is a previous note.
@@ -78,6 +82,7 @@ export const getNextNotes = (graph: ChainGraph, notePath: string): string[] => {
 
     return nextNotes;
 };
+
 /**
  * Get the full chain by following prev links backward
  */
@@ -105,6 +110,7 @@ export const getFullChainBackward = (
 
     return chain;
 };
+
 /**
  * Get the full chain by following next links forward
  */
@@ -132,6 +138,7 @@ export const getFullChainForward = (
 
     return chain;
 };
+
 /**
  * Get the complete linear chain containing the current note
  */
@@ -147,4 +154,110 @@ export const getCompleteChain = (
 
     // Combine: backward + forward (excluding duplicate current note)
     return [...backward.slice(0, -1), ...forward];
+};
+
+/**
+ * Parse the prev field from frontmatter and resolve note paths
+ */
+const parsePrevField = (app: App, prevValue: any, currentFilePath: string): string[] => {
+    if (!prevValue) return [];
+
+    const prevLinks: string[] = [];
+    const values = Array.isArray(prevValue) ? prevValue : [prevValue];
+
+    for (const value of values) {
+        if (typeof value !== 'string') continue;
+
+        // Extract note name from [[Note]] format
+        const match = value.match(/\[\[([^\]]+)\]\]/);
+        if (!match) continue;
+
+        const linkText = match[1];
+
+        // Resolve the link to an actual file path
+        const linkedFile = app.metadataCache.getFirstLinkpathDest(linkText, currentFilePath);
+        if (linkedFile instanceof TFile) {
+            prevLinks.push(linkedFile.path);
+        }
+    }
+
+    return prevLinks;
+};
+
+/**
+ * Build the chain graph from all files in the vault
+ */
+export const buildChainGraph = (app: App): ChainGraph => {
+    const graph = new ChainGraph();
+    const files = app.vault.getMarkdownFiles();
+
+    console.log(`Building chain graph from ${files.length} markdown files`);
+
+    // First pass: Add all nodes
+    for (const file of files) {
+        const metadata = app.metadataCache.getFileCache(file);
+        const stat = file.stat;
+
+        graph.safe_add_node(file.path, {
+            resolved: true,
+            aliases: metadata?.frontmatter?.aliases || [],
+            createdTime: stat.ctime // Creation time in milliseconds
+        });
+    }
+
+    // Second pass: Add all edges
+    for (const file of files) {
+        updateNodeEdges(graph, file, app);
+    }
+
+    console.log(`Chain graph built: ${graph.order} nodes, ${graph.size} edges`);
+
+    return graph;
+};
+
+/**
+ * Update the edges for a specific node based on its frontmatter
+ */
+export const updateNodeEdges = (graph: ChainGraph, file: TFile, app: App): void => {
+    const filePath = file.path;
+
+    if (!graph.hasNode(filePath)) {
+        // Add node if it doesn't exist
+        const stat = file.stat;
+        const metadata = app.metadataCache.getFileCache(file);
+
+        graph.safe_add_node(filePath, {
+            resolved: true,
+            aliases: metadata?.frontmatter?.aliases || [],
+            createdTime: stat.ctime
+        });
+    }
+
+    // Remove all existing outgoing edges from this node
+    const existingEdges: string[] = [];
+    graph.forEachOutEdge(filePath, (edge) => existingEdges.push(edge));
+    existingEdges.forEach(edge => graph.dropEdge(edge));
+
+    // Get the frontmatter
+    const metadata = app.metadataCache.getFileCache(file);
+    const prevValue = metadata?.frontmatter?.prev;
+
+    // Parse and resolve prev links
+    const prevLinks = parsePrevField(app, prevValue, filePath);
+
+    // Add edges for each prev link
+    for (const targetPath of prevLinks) {
+        // Ensure target node exists (might be unresolved)
+        if (!graph.hasNode(targetPath)) {
+            graph.safe_add_node(targetPath, {
+                resolved: false
+            });
+        }
+
+        // Add edge from current file to prev target
+        graph.addDirectedEdge(filePath, targetPath, {
+            field: "prev",
+            explicit: true
+        });
+    }
 };
