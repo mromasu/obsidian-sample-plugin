@@ -1,6 +1,7 @@
-import { App, Component, MarkdownView, TFile } from "obsidian";
+import { App, Component, MarkdownView, Notice, TFile } from "obsidian";
 import { buildRenderingChain, ChainSegment } from "./graph/BranchDetector";
 import { EmbeddableMarkdownEditor } from "./views/embeddededitor";
+import { reconstructFileContent } from "./utility/utils";
 import type ChainPlugin from "./main";
 
 /**
@@ -32,6 +33,41 @@ async function extractNoteContent(app: App, path: string): Promise<{ content: st
 }
 
 /**
+ * Saves editor content back to the file, preserving YAML frontmatter.
+ * 
+ * @param app - The Obsidian App instance
+ * @param path - The file path to save to
+ * @param newContent - The new markdown content (without frontmatter)
+ * @param originalYaml - The original YAML frontmatter to preserve
+ */
+async function saveEditorContent(
+    app: App,
+    path: string,
+    newContent: string,
+    originalYaml: string
+): Promise<void> {
+    try {
+        // Get the file from vault
+        const file = app.vault.getAbstractFileByPath(path);
+        if (!(file instanceof TFile)) {
+            new Notice(`Error: Could not find file ${path}`);
+            return;
+        }
+
+        // Reconstruct full content with YAML frontmatter
+        const fullContent = reconstructFileContent(newContent, originalYaml);
+
+        // Write back to file
+        await app.vault.modify(file, fullContent);
+
+        console.log(`Saved changes to ${path}`);
+    } catch (error) {
+        console.error(`Error saving file ${path}:`, error);
+        new Notice(`Failed to save changes to ${path}`);
+    }
+}
+
+/**
  * Creates a single embedded editor instance and injects it into the DOM.
  * 
  * @param app - The Obsidian App instance
@@ -39,13 +75,15 @@ async function extractNoteContent(app: App, path: string): Promise<{ content: st
  * @param container - The HTML element where this editor should be placed
  * @param content - The markdown content to display
  * @param sourcePath - The path of the note being displayed (for navigation)
+ * @param originalYaml - The original YAML frontmatter to preserve when saving
  */
 async function createEmbeddedEditor(
     app: App,
     parent: Component,
     container: HTMLElement,
     content: string,
-    sourcePath: string
+    sourcePath: string,
+    originalYaml: string
 ): Promise<void> {
 
     // 2. Create the container for the actual editor
@@ -55,13 +93,13 @@ async function createEmbeddedEditor(
     // This is our custom wrapper around Obsidian's internal editor
     const editor = new EmbeddableMarkdownEditor(app, editorContainer, {
         value: content,
-        onBlur: (editor) => {
+        onBlur: async (editor) => {
             // Callback when editor loses focus.
-            // Currently we don't save changes back to disk automatically.
-            // To implement saving, we would need to:
-            // 1. Read the original file again
-            // 2. Replace the body content while preserving frontmatter
-            // 3. Write back to file
+            // Save changes back to disk if content has changed.
+            const currentContent = editor.value;
+            if (currentContent !== content) {
+                await saveEditorContent(app, sourcePath, currentContent, originalYaml);
+            }
         }
     });
 
@@ -146,7 +184,7 @@ export const renderChainView = async (plugin: ChainPlugin, view?: MarkdownView) 
         container.className = `chain-thread-container ${baseClass} ${replyClass}`.trim();
 
         // Create the editor inside it
-        await createEmbeddedEditor(plugin.app, plugin, container, content, segment.path);
+        await createEmbeddedEditor(plugin.app, plugin, container, content, segment.path, yaml);
 
         // Insert the container
         if (isPrevNote) {
