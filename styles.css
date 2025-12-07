@@ -34,6 +34,7 @@
 
 .cm-contentContainer {
     padding: 20px 30px !important;
+    padding-top: 50px !important;
 }
 
 .chain-reply {
@@ -50,8 +51,42 @@
 
 .view-content>.markdown-source-view.mod-cm6>.cm-editor>.cm-scroller>.cm-sizer>.cm-contentContainer {
     box-shadow: var(--shadow-s);
+    border: 1px solid var(--background-modifier-border);
 }
 
 .cm-content {
     padding-bottom: unset !important;
+}
+
+/* ===== Chain Note Icon ===== */
+/* Transparent icon positioned outside the container to the left */
+
+.chain-thread-container {
+    position: relative;
+}
+
+.chain-note-icon {
+    position: absolute;
+    left: -30px;
+    top: 30px;
+    transform: translateY(-50%);
+    opacity: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    color: var(--text-muted);
+    transition: opacity 0.4s ease;
+}
+
+.chain-thread-container:hover .chain-note-icon {
+    opacity: 0.3;
+}
+
+.chain-note-icon:hover {
+    opacity: 1 !important;
+    color: var(--text-normal);
+    transition: opacity 0.15s ease;
 }

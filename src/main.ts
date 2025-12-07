@@ -1,5 +1,4 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
-import { EditorView } from '@codemirror/view';
 import { ChainGraph } from './graph/GraphBuilder';
 import { buildChainGraph, updateNodeEdges } from './graph/ChainQueries';
 import { renderChainView } from './renderChainView';
@@ -24,6 +23,7 @@ export default class MyPlugin extends Plugin {
 	emptyLineDetector: EmptyLineDetector;
 	noteCreationService: NoteCreationService;
 	private isCreatingNote: boolean = false; // Debounce flag to prevent rapid creation
+	private prevFrontmatterCache: Map<string, string | undefined> = new Map(); // Cache prev values to detect changes
 
 	// Expose graph for backward compatibility with renderChainView
 	get graph(): ChainGraph {
@@ -50,14 +50,17 @@ export default class MyPlugin extends Plugin {
 			this.emptyLineDetector = new EmptyLineDetector();
 			this.noteCreationService = new NoteCreationService(this.app, this.graphService);
 
-			// Register CodeMirror extension for detecting empty lines in native editor
-			this.registerEditorExtension(
-				EditorView.updateListener.of((update) => {
-					if (update.docChanged && !this.isCreatingNote) {
-						const content = update.state.doc.toString();
-						if (this.emptyLineDetector.detectPattern(content)) {
-							this.handleEmptyLineDetection(update.view);
-						}
+			// Set callback to re-render chain view after new note is created
+			this.noteCreationService.setOnNoteCreated(async (file) => {
+				await this.renderChainView();
+			});
+
+			// Listen to editor changes for detecting empty line pattern
+			// This fires for the native editor - gives us direct access to the file
+			this.registerEvent(
+				this.app.workspace.on("editor-change", (editor, view) => {
+					if (view instanceof MarkdownView && !this.isCreatingNote) {
+						this.handleEditorChange(editor, view);
 					}
 				})
 			);
@@ -97,11 +100,19 @@ export default class MyPlugin extends Plugin {
 			);
 
 			// Handle file creation and modification via cache updates
-			// Debounced to avoid excessive updates during rapid saves
+			// Only re-render when the "prev" frontmatter field changes
 			const debouncedMetadataHandler = debounce((file: TFile) => {
-				console.log("Metadata changed (debounced):", file.path);
-				this.graphService.updateFile(file);
-				this.renderChainView();
+				const cache = this.app.metadataCache.getFileCache(file);
+				const newPrev = JSON.stringify(cache?.frontmatter?.prev);
+				const oldPrev = this.prevFrontmatterCache.get(file.path);
+
+				// Only update if prev changed (or file is new)
+				if (newPrev !== oldPrev) {
+					console.log(`Frontmatter prev changed in ${file.path}:`, oldPrev, "->", newPrev);
+					this.prevFrontmatterCache.set(file.path, newPrev);
+					this.graphService.updateFile(file);
+					this.renderChainView();
+				}
 			}, 300);
 
 			this.registerEvent(
@@ -122,13 +133,14 @@ export default class MyPlugin extends Plugin {
 			);
 
 			// Handle layout changes (e.g. pane resizing, splits)
-			// Only re-render, don't rebuild the entire graph
+			// Debounced to prevent scroll issues during editing
+			const debouncedLayoutChange = debounce(async () => {
+				console.log("Layout changed (debounced)");
+				await this.renderChainView();
+			}, 500);
+
 			this.registerEvent(
-				this.app.workspace.on("layout-change", async () => {
-					console.log("Layout changed");
-					// Only re-render, don't rebuild graph (active-leaf-change handles file switches)
-					await this.renderChainView();
-				})
+				this.app.workspace.on("layout-change", debouncedLayoutChange)
 			);
 
 
@@ -156,34 +168,36 @@ export default class MyPlugin extends Plugin {
 	}
 
 	/**
-	 * Handle detection of four empty lines in the native editor.
-	 * Cleans up the extra lines and creates a new chained note.
+	 * Handle editor changes to detect the empty line pattern.
+	 * Uses editor-change event which gives direct access to the file being edited.
 	 */
-	private async handleEmptyLineDetection(view: EditorView): Promise<void> {
-		const activeFile = this.app.workspace.getActiveFile();
-		if (!activeFile) return;
+	private handleEditorChange(editor: Editor, view: MarkdownView): void {
+		const content = editor.getValue();
 
-		// Set flag to prevent re-triggering during content update
+		// Check for the pattern
+		if (!this.emptyLineDetector.detectPattern(content)) {
+			return;
+		}
+
+		// Get the file being edited - this is the actual file, not the active file
+		const file = view.file;
+		if (!file) return;
+
+		// Prevent double triggers
 		this.isCreatingNote = true;
 
-		try {
-			// Remove pattern from editor
-			const content = view.state.doc.toString();
-			const cleanContent = this.emptyLineDetector.removePattern(content);
-			view.dispatch({
-				changes: { from: 0, to: content.length, insert: cleanContent }
-			});
+		// Remove the extra newlines immediately
+		const cleanContent = this.emptyLineDetector.removePattern(content);
+		editor.setValue(cleanContent);
 
-			console.log("Empty line pattern detected, creating new note...");
-
-			// Create new chained note
-			await this.noteCreationService.createChainedNote(activeFile.path);
-		} finally {
-			// Reset flag after a short delay to allow the new note to open
+		// Create new note chained to this file
+		console.log(`Empty line pattern detected in ${file.path}, creating new note...`);
+		this.noteCreationService.createChainedNote(file.path).finally(() => {
+			// Reset flag after creation completes
 			setTimeout(() => {
 				this.isCreatingNote = false;
-			}, 500);
-		}
+			}, 300);
+		});
 	}
 	//============================================
 

@@ -212,6 +212,10 @@ export const renderChainView = async (plugin: ChainPlugin, view?: MarkdownView):
     const cmSizer = containerEl.querySelector(".cm-sizer");
     if (!cmSizer) return undefined;
 
+    // Save scroll position before DOM manipulation to prevent scroll jump
+    const cmScroller = containerEl.querySelector(".cm-scroller") as HTMLElement | null;
+    const savedScrollTop = cmScroller?.scrollTop ?? 0;
+
     // CLEANUP: Remove any existing injected views to avoid duplicates
     // This runs every time we re-render (e.g. when switching files)
     const existing = cmSizer.querySelectorAll(".chain-thread-container");
@@ -251,6 +255,17 @@ export const renderChainView = async (plugin: ChainPlugin, view?: MarkdownView):
         const replyClass = segment.isReply ? "chain-reply" : "";
         container.className = `chain-thread-container ${baseClass} ${replyClass}`.trim();
 
+        // Add clickable file icon (transparent, positioned outside left)
+        const noteIcon = document.createElement("div");
+        noteIcon.className = "chain-note-icon";
+        noteIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>`;
+        noteIcon.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            plugin.app.workspace.openLinkText(segment.path, "", false);
+        });
+        container.appendChild(noteIcon);
+
         // Create the editor inside it
         const editor = await createEmbeddedEditor(plugin, container, content, segment.path, yaml);
         createdEditors.push(editor);
@@ -274,6 +289,14 @@ export const renderChainView = async (plugin: ChainPlugin, view?: MarkdownView):
             }
             insertionIndex++; // Adjust for next insertion
         }
+    }
+
+    // Restore scroll position after DOM manipulation
+    if (cmScroller) {
+        // Use requestAnimationFrame to ensure DOM has updated
+        requestAnimationFrame(() => {
+            cmScroller.scrollTop = savedScrollTop;
+        });
     }
 
     // Return cleanup function

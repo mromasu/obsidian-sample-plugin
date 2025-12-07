@@ -97,4 +97,39 @@ export class GraphService extends Events {
     hasNode(path: string): boolean {
         return this._graph.hasNode(path);
     }
+
+    /**
+     * Add a new file to the graph with a known prev edge.
+     * This is used during note creation when we know the relationship
+     * but the metadata cache may not be ready yet.
+     * 
+     * @param file - The newly created file
+     * @param prevPath - The path of the file that this new file links to via "prev"
+     */
+    addFileWithEdge(file: TFile, prevPath: string): void {
+        console.log(`GraphService: addFileWithEdge ${file.path} -> ${prevPath}`);
+
+        // Add node if it doesn't exist
+        if (!this._graph.hasNode(file.path)) {
+            this._graph.safe_add_node(file.path, {
+                resolved: true,
+                createdTime: file.stat.ctime
+            });
+        }
+
+        // Ensure prev node exists
+        if (!this._graph.hasNode(prevPath)) {
+            this._graph.safe_add_node(prevPath, {
+                resolved: false
+            });
+        }
+
+        // Add edge from new file to prev file (direction: newFile -> prevFile)
+        this._graph.addDirectedEdge(file.path, prevPath, {
+            field: "prev",
+            explicit: true
+        });
+
+        this.trigger("graph-updated", file.path);
+    }
 }
