@@ -161,18 +161,47 @@ if [[ "$git_choice" =~ ^[Yy]$ ]]; then
         git push && git push --tags
         echo -e "${GREEN}✓ Pushed to remote${NC}"
     fi
+    
+    # GitHub Release with gh CLI
+    echo ""
+    echo -e "${YELLOW}GitHub Release:${NC}"
+    
+    # Check if gh is installed
+    if ! command -v gh &> /dev/null; then
+        echo -e "${RED}GitHub CLI (gh) not installed. Skipping release creation.${NC}"
+        echo -e "  Install with: ${BLUE}brew install gh${NC}"
+        echo ""
+        echo -e "${YELLOW}Manual steps:${NC}"
+        echo -e "  1. Create release at: https://github.com/mromasu/obsidian-sample-plugin/releases/new"
+        echo -e "  2. Use tag: ${GREEN}$NEW_VERSION${NC}"
+        echo -e "  3. Attach: main.js, manifest.json, styles.css"
+    else
+        read -p "Create GitHub release with assets? [y/N]: " release_choice
+        if [[ "$release_choice" =~ ^[Yy]$ ]]; then
+            echo -e "  Creating GitHub release ${GREEN}$NEW_VERSION${NC}..."
+            
+            # Build release assets list
+            ASSETS="main.js manifest.json"
+            if [[ -f "styles.css" ]]; then
+                ASSETS="$ASSETS styles.css"
+            fi
+            
+            # Create release with assets
+            # --generate-notes auto-generates release notes from commits
+            gh release create "$NEW_VERSION" \
+                --title "v$NEW_VERSION" \
+                --generate-notes \
+                --prerelease \
+                $ASSETS
+            
+            echo -e "${GREEN}✓ GitHub release created with assets${NC}"
+            echo -e "  View at: ${BLUE}$(gh release view "$NEW_VERSION" --json url -q .url)${NC}"
+        fi
+    fi
 fi
 
 echo ""
 echo -e "${GREEN}╔════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║   Release $NEW_VERSION complete!            ║${NC}"
+echo -e "${GREEN}║   Release $NEW_VERSION complete! 🚀        ║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════╝${NC}"
-echo ""
-echo -e "${YELLOW}Next steps:${NC}"
-echo -e "  1. Create a GitHub release at: https://github.com/mromasu/threads/releases/new"
-echo -e "  2. Use tag: ${GREEN}$NEW_VERSION${NC}"
-echo -e "  3. Attach these files:"
-echo -e "     - main.js"
-echo -e "     - manifest.json"
-echo -e "     - styles.css (if exists)"
 echo ""
