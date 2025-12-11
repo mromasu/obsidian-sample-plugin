@@ -1,94 +1,147 @@
-# Obsidian Sample Plugin
+# Obsidian Threads Plugin
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+Transform your Obsidian experience into a **Twitter/X-like threaded note-taking system**. Chain your notes together naturally and view them as a continuous conversation flow.
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+![Obsidian](https://img.shields.io/badge/Obsidian-Plugin-purple)
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open Sample Modal" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+## What is Threads?
 
-## First time developing plugins?
+Threads turns traditional file-based note-taking into a fluid, thread-based experience. Instead of isolated notes, create connected chains of thoughts that flow naturally from one to the next—just like posting a thread on Twitter/X.
 
-Quick starting guide for new plugin devs:
+### Key Features
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+- **🧵 Threaded Notes**: Chain notes together using a simple `prev` frontmatter field
+- **📜 Chain View**: See your entire thread rendered as a continuous scroll in a single view
+- **⌨️ Quick Creation**: Press Enter 4 times at the end of a note to instantly create a new chained note
+- **🔗 Auto Linking**: New notes automatically link to their parent with `prev: [[ParentNote]]`
+- **🌿 Branch Detection**: Handles reply branches when multiple notes link to the same parent
+- **🔄 Chain Healing**: Deleting a note in the middle automatically reconnects the chain
+- **✏️ Embedded Editing**: Edit any note in the chain directly from the chain view
 
-## Releasing new releases
+## How It Works
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+### Thread Structure
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+Notes are connected through frontmatter:
 
-## Adding your plugin to the community plugin list
+```yaml
+---
+prev: "[[Previous Note]]"
+---
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
-
-## How to use
-
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
-
-## Manually installing the plugin
-
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
-
-## Improve code quality with eslint (optional)
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- To use eslint with this project, make sure to install eslint from terminal:
-  - `npm install -g eslint`
-- To use eslint to analyze this project use this command:
-  - `eslint main.ts`
-  - eslint will then create a report with suggestions for code improvement by file and line number.
-- If your source code is in a folder, such as `src`, you can use eslint with this command to analyze all files in that folder:
-  - `eslint ./src/`
-
-## Funding URL
-
-You can include funding URLs where people who use your plugin can financially support it.
-
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
-
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
+Your content here...
 ```
 
-If you have multiple URLs, you can also do:
+When you open a note, the plugin displays:
+1. **Previous notes** in the chain (scrolling up)
+2. **The current note** (your active file)
+3. **Next notes** (notes that have this note as their `prev`)
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
+### Creating New Threads
+
+**Method 1: Quick Create**
+1. Write in any note
+2. Press `Enter` 4 times at the end
+3. A new chained note is automatically created and opened
+
+**Method 2: Manual**
+1. Create a new note
+2. Add `prev: "[[YourPreviousNote]]"` to the frontmatter
+
+### Branch Handling
+
+When multiple notes point to the same parent:
+- The **oldest note** (by creation time) is treated as the main thread
+- Other notes appear as **reply branches** below
+
+## Installation
+
+### From Source
+
+1. Clone this repository into your vault's `.obsidian/plugins/` folder:
+   ```bash
+   cd /path/to/vault/.obsidian/plugins/
+   git clone <repo-url> threads
+   ```
+
+2. Install dependencies and build:
+   ```bash
+   npm install
+   npm run build
+   ```
+
+3. Enable the plugin in Obsidian Settings → Community Plugins
+
+### Development
+
+```bash
+# Install dependencies
+npm install
+
+# Start development mode (auto-rebuild on changes)
+npm run dev
+
+# Production build
+npm run build
 ```
+
+## Architecture
+
+```
+src/
+├── main.ts                    # Plugin entry point & event handlers
+├── renderChainView.ts         # Main chain view rendering logic
+├── graph/
+│   ├── GraphBuilder.ts        # Chain graph data structure
+│   ├── ChainQueries.ts        # Graph traversal utilities
+│   ├── BranchDetector.ts      # Branch classification logic
+│   └── ChainHealer.ts         # Auto-repair after deletions
+├── services/
+│   ├── GraphService.ts        # Centralized graph management
+│   ├── NoteCreationService.ts # Chained note creation
+│   └── EmptyLineDetector.ts   # 4-Enter pattern detection
+├── views/
+│   └── embeddededitor.ts      # CodeMirror embedded editor
+└── utility/
+    ├── debounce.ts            # Debounce utilities
+    └── utils.ts               # Frontmatter & content helpers
+```
+
+### Core Concepts
+
+| Component | Purpose |
+|-----------|---------|
+| **ChainGraph** | Directed graph storing note relationships (using [Graphology](https://graphology.github.io/)) |
+| **GraphService** | Manages graph state, handles CRUD operations |
+| **ChainHealer** | Maintains chain continuity when notes are deleted |
+| **BranchDetector** | Determines main chain vs. reply branches |
+
+### Event Flow
+
+1. **Startup**: Build graph from all vault files
+2. **Metadata Change**: Update affected node edges
+3. **File Rename**: Update graph node ID
+4. **File Delete**: Heal chain, then remove node
+5. **Empty Line Pattern**: Create new chained note
+
+## Styling
+
+The plugin injects custom CSS for the thread view. Customize via `styles.css`:
+
+- `.chain-thread-container` - Individual note containers
+- `.chain-reply` - Reply branch styling
+- `.chain-embedded-editor` - Embedded editor wrapper
+- Mobile-responsive styles included
+
+## Requirements
+
+- Obsidian v0.15.0+
+- Node.js v16+ (for development)
 
 ## API Documentation
 
-See https://github.com/obsidianmd/obsidian-api
+See the [Obsidian Plugin API](https://github.com/obsidianmd/obsidian-api) for more details.
+
+## License
+
+MIT

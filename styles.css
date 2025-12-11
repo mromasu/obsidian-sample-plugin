@@ -1,4 +1,4 @@
-/* Breadcrumbs Navigation Styles */
+/*Breadcrumbs Navigation Styles*/
 
 .chain-prev,
 .chain-next {
@@ -49,9 +49,14 @@
     border-bottom: 2px solid black;
 }
 
-.view-content>.markdown-source-view.mod-cm6>.cm-editor>.cm-scroller>.cm-sizer>.cm-contentContainer {
+.view-content>.markdown-source-view>.cm-editor>.cm-scroller>.cm-sizer>.cm-contentContainer {
     box-shadow: var(--shadow-s);
-    border: 1px solid var(--background-modifier-border);
+    border-left: 1px solid var(--blockquote-border-color);
+}
+
+.chain-thread-container:nth-last-child(2),
+.view-content>.markdown-source-view.mod-cm6>.cm-editor>.cm-scroller>.cm-sizer>.cm-contentContainer:nth-last-child(2) {
+    margin-bottom: 50vh;
 }
 
 .cm-content {
@@ -68,7 +73,7 @@
 .chain-note-icon {
     position: absolute;
     left: -30px;
-    top: 30px;
+    top: 60px;
     transform: translateY(-50%);
     opacity: 0;
     cursor: pointer;
@@ -89,4 +94,23 @@
     opacity: 1 !important;
     color: var(--text-normal);
     transition: opacity 0.15s ease;
+}
+
+/*=============================================================================*/
+/*=============================================================================*/
+/*    MOBILE SPECIFIC STYLES                                                   */
+/*=============================================================================*/
+
+.is-mobile .cm-contentContainer {
+    padding: 10px 15px !important;
+    padding-top: 25px !important;
+}
+
+.is-mobile .view-content>.markdown-source-view>.cm-editor>.cm-scroller {
+    padding: 10px;
+}
+
+.is-mobile .chain-thread-container,
+.is-mobile .view-content>.markdown-source-view.mod-cm6>.cm-editor>.cm-scroller>.cm-sizer>.cm-contentContainer {
+    border-bottom: 4px solid black;
 }
