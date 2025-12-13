@@ -4,7 +4,7 @@ import { GraphService } from "./GraphService";
 /**
  * Service to create new chained notes.
  * 
- * When the empty line pattern is detected, this service:
+ * When invoked (e.g. via button click), this service:
  * 1. Creates a new note with a timestamp-based name
  * 2. Sets the new note's `prev` frontmatter to point to the current note
  * 3. Opens the new note in the active editor

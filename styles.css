@@ -37,11 +37,39 @@
     padding-top: 50px !important;
 }
 
-.chain-reply {
-    margin-top: 50px;
+/* ===== Create Note Button ===== */
+
+.chain-create-button-container {
+    display: flex;
+    justify-content: center;
+    padding: 30px 20px;
+    margin-bottom: 50vh;
 }
 
-/* ===== Last Container in Chain Styles ===== */
+.chain-create-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border: 1px dashed var(--text-muted);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.chain-create-button:hover {
+    border-color: var(--text-normal);
+    color: var(--text-normal);
+    background: var(--background-modifier-hover);
+}
+
+.chain-create-button svg {
+    width: 16px;
+    height: 16px;
+}
 
 .chain-thread-container,
 .view-content>.markdown-source-view.mod-cm6>.cm-editor>.cm-scroller>.cm-sizer>.cm-contentContainer {
@@ -113,4 +141,8 @@
 .is-mobile .chain-thread-container,
 .is-mobile .view-content>.markdown-source-view.mod-cm6>.cm-editor>.cm-scroller>.cm-sizer>.cm-contentContainer {
     border-bottom: 2px solid var(--background-modifier-border);
+}
+
+.is-mobile .chain-note-icon {
+    display: none;
 }

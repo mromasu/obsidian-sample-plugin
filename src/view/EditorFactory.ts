@@ -57,29 +57,7 @@ export async function createEmbeddedEditor(
             const currentContent = editor.value;
             if (currentContent !== originalContent) {
                 isDirty = true;
-
-                // Check for empty line pattern to create new note
-                if (plugin.emptyLineDetector && plugin.emptyLineDetector.detectPattern(currentContent)) {
-                    // Remove pattern and save
-                    const cleanContent = plugin.emptyLineDetector.removePattern(currentContent);
-                    // Use 'any' cast because 'set' is inherited from dynamically resolved parent
-                    (editor as any).set(cleanContent);
-                    originalContent = cleanContent;
-                    isDirty = false;
-
-                    // Clear any pending save timer
-                    if (debounceTimer) {
-                        clearTimeout(debounceTimer);
-                        debounceTimer = null;
-                    }
-
-                    // Save immediately and create new note
-                    saveEditorContent(app, sourcePath, cleanContent, originalYaml).then(() => {
-                        plugin.noteCreationService.createChainedNote(sourcePath);
-                    });
-                } else {
-                    debouncedSave(currentContent);
-                }
+                debouncedSave(currentContent);
             }
         },
         onBlur: async (editor) => {

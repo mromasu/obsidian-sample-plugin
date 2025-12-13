@@ -16,3 +16,4 @@ export interface ThreadsSettings {
 export const DEFAULT_SETTINGS: ThreadsSettings = {
     newNotesFolder: ''
 };
+

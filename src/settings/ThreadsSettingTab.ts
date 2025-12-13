@@ -22,7 +22,7 @@ export class ThreadsSettingTab extends PluginSettingTab {
         // Folder setting for new notes
         new Setting(containerEl)
             .setName('New notes folder')
-            .setDesc('Where to create new notes when triggered by empty lines. Leave empty to use the same folder as the current note.')
+            .setDesc('Where to create new notes. Leave empty to use the same folder as the current note.')
             .addText(text => {
                 text.setPlaceholder('e.g., daily-notes')
                     .setValue(this.plugin.settings.newNotesFolder)
